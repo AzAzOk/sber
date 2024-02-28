@@ -1,13 +1,31 @@
+import re
 import json
 from datetime import datetime
+
+
+def mask_card_number_from(text):
+    match = re.search(r'\d{16,20}', text)
+    if match:
+        return text.replace(
+            match.group(),
+            ' '.join([match.group()[:4], match.group()[4:6] + '**', '*' * 4, match.group()[-4:]]))
+    return text
+
+
+def mask_card_number_to(text):
+    match = re.search(r'\d{4}$', text)
+    if match:
+        return '**' + match.group()
+    return text
+
 
 with open('operations.json', 'r', encoding='utf-8') as fors:
     data = json.load(fors)
 
 
-def key(F):
-    if F.get("state") == "EXECUTED":
-        return F.get("date", "")
+def key(datta):
+    if datta.get("state") == "EXECUTED":
+        return datta.get("date", "")
     else:
         return ""
 
@@ -15,12 +33,13 @@ def key(F):
 sorted_data = sorted(data, key=key, reverse=True)
 
 for entry in sorted_data[:5]:
-    from_account = entry.get("from", "Неизвестно")
-    from_masked = ' '.join(
-        [from_account[:4], '*' * 6, from_account[-4:]]) if from_account != "Неизвестно" else "Неизвестно"
-    date_str = entry["date"]
-    date = datetime.strptime(date_str, '%Y-%m-%dT%H:%M:%S.%f').strftime('%d.%m.%Y')
+    date = datetime.strptime(entry["date"], '%Y-%m-%dT%H:%M:%S.%f').strftime('%d.%m.%Y')
 
     print(f"{date} {entry["description"]}")
-    print(f"{from_masked} -> {entry["to"]}")
+
+    print(f""
+          f"{mask_card_number_from(entry.get("from", "Неизвестно"))}"
+          f" -> "
+          f"{mask_card_number_to(entry.get("to", "Неизвестно"))}")
+
     print(f"{entry["operationAmount"]["amount"]} {entry["operationAmount"]["currency"]["name"]}\n")
